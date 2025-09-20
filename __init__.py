@@ -1,8 +1,8 @@
 bl_info = {
     "name": "Store, Reapply and Animate Bone Constraints",
     "author": "Liz",
-    "version": (1, 2),
-    "blender": (4, 5, 0),
+    "version": (1, 3),
+    "blender": (4, 0, 0),
     "location": "View3D > Sidebar > Bone Constraints",
     "description": "Store/reapply constraints, keyframe influences, and bake pose",
     "category": "Rigging",

@@ -34,8 +34,8 @@ class BONECONSTRAINTS_PT_panel(bpy.types.Panel):
         layout.separator()
         layout.operator("boneconstraints.copy_rig", icon="COPYDOWN")
         layout.operator("boneconstraints.copy_to_mocap_constr", icon="COPYDOWN")
+        # layout.operator("boneconstraints.rigify_spine_retarget", icon="COPYDOWN")
         layout.operator("boneconstraints.rigify_spine_retarget", icon="COPYDOWN")
-        layout.operator("boneconstraints.rigify_spine_retarget2", icon="COPYDOWN")
         
 
         
@@ -48,8 +48,8 @@ classes = (
     constrains.BONECONSTRAINTS_OT_bake_and_remove,
     rigify.BONECONSTRAINTS_OT_Copy_rig,
     rigify.BONECONSTRAINTS_OT_Copy_to_mocap_constrains,
+    # rigify.Rigify_spine_retarget,
     rigify.Rigify_spine_retarget,
-    rigify.Rigify_spine_retarget2,
     BONECONSTRAINTS_PT_panel   
 )
 

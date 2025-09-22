@@ -1,7 +1,7 @@
 # For mocap. Copy rig, leave only ORG, reparent them. 
 
 import bpy
-from mathutils import Vector
+from mathutils import Vector, geometry
 
 
 class BONECONSTRAINTS_OT_Copy_rig(bpy.types.Operator):
@@ -249,121 +249,153 @@ def find_centered_bones(bones):
     center_bones.sort(key=lambda bone: bone.head.z)
     return center_bones
 
+# class Rigify_spine_retarget(bpy.types.Operator):
+#     """Find spine bones close to other rig's spine bones, and retarget"""
+#     bl_idname = "boneconstraints.rigify_spine_retarget"
+#     bl_label = "Spine retarget"
+#     bl_options = {'REGISTER', 'UNDO'}
+#     def execute(self, context):
+#         # Reference position (world space)
+#         target_pos = Vector((0.0, 0.0, 1.5))
+
+#         # Get armature object
+#         arm = bpy.context.object
+#         if arm.type != 'ARMATURE':
+#             self.report({'ERROR'}, "Select two armatures, one is Rigify copy, other is mocap")
+#             return {'CANCELLED'}
+#         bpy.ops.object.editmode_toggle(True)
+#         bpy.ops.armature.select_all(action='SELECT')
+#         bones = context.object.data.edit_bones
+
+#         closest_bone = None
+#         closest_dist = float('inf')
+
+#         count = 0
+#         for bone in bones:
+#             # Bone head position in world space
+#             # head_world = arm.matrix_world @ bone.head
+#             # tail_world = arm.matrix_world @ bone.tail
+
+#             # Distance to head
+#             dist_head = (bone.head - target_pos).length
+#             # Distance to tail
+#             dist_tail = (bone.tail - target_pos).length
+
+#             # Use whichever is closer
+#             dist = min(dist_head, dist_tail)
+
+#             if dist < closest_dist:
+#                 closest_dist = dist
+#                 closest_bone = bone
+#         bpy.ops.object.mode_set(mode='OBJECT')
+#         # print("Closest bone:", closest_bone.name if closest_bone else None)
+#         # print("Distance:", closest_dist)
+#         self.report({'INFO'}, f"Closest bone: {closest_bone.name}, Distance: {closest_dist}")
+#         return {'FINISHED'}
+    
+
+# def closest_bone_between_rigs(rig_a, rig_b):
+#     """
+#     Finds, for each bone in rig_a (edit mode), the closest bone in rig_b
+#     based on head/tail positions.
+#     """
+
+#     # Matrices for local->world transforms
+#     mat_a = rig_a.matrix_world
+#     mat_b = rig_b.matrix_world
+
+#     results = {}
+
+#     for bone_a in rig_a.data.edit_bones:
+#         # Bone A head/tail in world space
+#         head_a = mat_a @ bone_a.head
+#         tail_a = mat_a @ bone_a.tail
+
+#         closest_bone = None
+#         closest_dist = float("inf")
+
+#         for bone_b in rig_b.data.edit_bones:
+#             # Bone B head/tail in world space
+#             head_b = mat_b @ bone_b.head
+#             tail_b = mat_b @ bone_b.tail
+
+#             # Compute pairwise distances
+#             dists = [
+#                 (head_a - head_b).length,
+#                 (head_a - tail_b).length,
+#                 (tail_a - head_b).length,
+#                 (tail_a - tail_b).length,
+#             ]
+#             dist = min(dists)
+
+#             if dist < closest_dist:
+#                 closest_dist = dist
+#                 closest_bone = bone_b
+
+#         results[bone_a.name] = (closest_bone.name if closest_bone else None, closest_dist)
+
+#     return results
+
+def find_closest_bone(current_bone, other_bones):
+    closest_bone = None
+    closest_dist = float('inf')
+
+    # Use the midpoint of current bone as reference
+    current_mid = (current_bone.head + current_bone.tail) * 0.5
+
+    for bone in other_bones:
+        # Midpoint of candidate bone
+        bone_mid = (bone.head + bone.tail) * 0.5
+
+        # Distance between midpoints
+        dist = (bone_mid - current_mid).length
+
+        if dist < closest_dist:
+            closest_dist = dist
+            closest_bone = bone
+
+    return closest_bone, closest_dist
+
 class Rigify_spine_retarget(bpy.types.Operator):
     """Find spine bones close to other rig's spine bones, and retarget"""
     bl_idname = "boneconstraints.rigify_spine_retarget"
     bl_label = "Spine retarget"
     bl_options = {'REGISTER', 'UNDO'}
     def execute(self, context):
-        # Reference position (world space)
-        target_pos = Vector((0.0, 0.0, 1.5))
-
-        # Get armature object
-        arm = bpy.context.object
-        if arm.type != 'ARMATURE':
+        if len(context.selected_objects) < 2:
             self.report({'ERROR'}, "Select two armatures, one is Rigify copy, other is mocap")
             return {'CANCELLED'}
-        bpy.ops.object.editmode_toggle(True)
-        bpy.ops.armature.select_all(action='SELECT')
-        bones = context.object.data.edit_bones
-
-        closest_bone = None
-        closest_dist = float('inf')
-
-        count = 0
-        for bone in bones:
-            # Bone head position in world space
-            # head_world = arm.matrix_world @ bone.head
-            # tail_world = arm.matrix_world @ bone.tail
-
-            # Distance to head
-            dist_head = (bone.head - target_pos).length
-            # Distance to tail
-            dist_tail = (bone.tail - target_pos).length
-
-            # Use whichever is closer
-            dist = min(dist_head, dist_tail)
-
-            if dist < closest_dist:
-                closest_dist = dist
-                closest_bone = bone
         bpy.ops.object.mode_set(mode='OBJECT')
-        # print("Closest bone:", closest_bone.name if closest_bone else None)
-        # print("Distance:", closest_dist)
-        self.report({'INFO'}, f"Closest bone: {closest_bone.name}, Distance: {closest_dist}")
-        return {'FINISHED'}
-    
-
-def closest_bone_between_rigs(rig_a, rig_b):
-    """
-    Finds, for each bone in rig_a (edit mode), the closest bone in rig_b
-    based on head/tail positions.
-    """
-
-    # Matrices for local->world transforms
-    mat_a = rig_a.matrix_world
-    mat_b = rig_b.matrix_world
-
-    results = {}
-
-    for bone_a in rig_a.data.edit_bones:
-        # Bone A head/tail in world space
-        head_a = mat_a @ bone_a.head
-        tail_a = mat_a @ bone_a.tail
-
-        closest_bone = None
-        closest_dist = float("inf")
-
-        for bone_b in rig_b.data.edit_bones:
-            # Bone B head/tail in world space
-            head_b = mat_b @ bone_b.head
-            tail_b = mat_b @ bone_b.tail
-
-            # Compute pairwise distances
-            dists = [
-                (head_a - head_b).length,
-                (head_a - tail_b).length,
-                (tail_a - head_b).length,
-                (tail_a - tail_b).length,
-            ]
-            dist = min(dists)
-
-            if dist < closest_dist:
-                closest_dist = dist
-                closest_bone = bone_b
-
-        results[bone_a.name] = (closest_bone.name if closest_bone else None, closest_dist)
-
-    return results
-
-class Rigify_spine_retarget2(bpy.types.Operator):
-    """Find spine bones close to other rig's spine bones, and retarget"""
-    bl_idname = "boneconstraints.rigify_spine_retarget2"
-    bl_label = "Spine retarget"
-    bl_options = {'REGISTER', 'UNDO'}
-    def execute(self, context):
-        # Get armature object
-        arm = bpy.context.object
-        if arm.type != 'ARMATURE':
-            self.report({'ERROR'}, "Select two armatures, one is Rigify copy, other is mocap")
-            return {'CANCELLED'}
+        
+        copy = context.selected_objects[0]
+        mocap = context.selected_objects[1]
+        id = copy.data.collections_all.find("ORG")
+        if copy.data.collections_all.find("ORG") == -1:
+            copy = context.selected_objects[1]
+            mocap = context.selected_objects[0]
+        
         bpy.ops.object.editmode_toggle(True)
+        # bpy.ops.object.mode_set(mode="EDIT")
+        # bpy.context.view_layer.objects.active = mocap # not required
         bpy.ops.armature.select_all(action='SELECT')
-        bones = context.object.data.edit_bones
+        # Get center bones for copy rigify rig
+        bones_copy = find_centered_bones(copy.data.edit_bones)
+        bones_mocap = find_centered_bones(mocap.data.edit_bones)
+        for bone_copy in bones_copy:
+            closest_bone, closest_dist = find_closest_bone(bone_copy, bones_mocap)
+            self.report({'INFO'}, f"{bone_copy.name} - Closest: {closest_bone.name}, dist: {closest_dist:.4f}")
+        # for bone in bones_copy:
+        #     self.report({'INFO'}, f"Center bone mocap: {bone.name}")
+        # Get center bones for mocap
 
-        # Example usage:
-        # rig_a = bpy.data.objects["Armature"]       # first rig
-        rig_b = bpy.data.objects["metarig.010"]  # second rig
+        # for bone in bones_mocap:
+        #     self.report({'INFO'}, f"Center bone mocap: {bone.name}")
 
-        # Make sure both are in EDIT mode
-        # bpy.context.view_layer.objects.active = rig_a
-        bpy.ops.object.mode_set(mode="EDIT")
+        ## Call function
+        # closest_map = closest_bone_between_rigs(arm, rig_b)
 
-        # Call function
-        closest_map = closest_bone_between_rigs(arm, rig_b)
-
-        for bone_a, (bone_b, dist) in closest_map.items():
-            self.report({'INFO'}, f"{bone_a} -> {bone_b} (dist {dist:.4f})")
+        # for bone_a, (bone_b, dist) in closest_map.items():
+        #     self.report({'INFO'}, f"{bone_a} -> {bone_b} (dist {dist:.4f})")
             # print(f"{bone_a} -> {bone_b} (dist {dist:.4f})")
 
         # self.report({'INFO'}, f"Closest bone: {closest_bone.name}, Distance: {closest_dist}")

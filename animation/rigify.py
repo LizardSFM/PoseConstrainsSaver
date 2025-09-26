@@ -334,7 +334,11 @@ class Rigify_spine_retarget(bpy.types.Operator):
         bpy.ops.object.mode_set(mode='OBJECT')
         return {'FINISHED'}
 
+## REWORK 
+## TODO: Implement menu for manual input of bones (feet, hand IK, torso, neck etc)
+# if rigify rig was customized and bone names changed
 
+## TODO: clear constrains when copying, and back to pose position
 class Rigify_utils_Copy_rig(bpy.types.Operator):
     """Copy rigify rig, leave ORG and MCH bones. It should follow mocap rig"""
     bl_idname = "rigify_utils.copy_rig"
@@ -361,6 +365,9 @@ class Rigify_utils_Copy_rig(bpy.types.Operator):
         obj.data.collections_all[org_id].is_solo = True
         col = obj.data.collections[org_id]
         bpy.ops.object.editmode_toggle(True)
+
+        # Cut and edit the neck (reduce from 2 bones to 1)
+
         # Move feet MCH to MCH-mocap for proper retargeting of feet later
         obj.data.collections.new("MCH-mocap")
         obj.data.collections_all["MCH-mocap"].is_solo = True
@@ -474,6 +481,7 @@ class Rigify_utils_Copy_rig(bpy.types.Operator):
         self.report({'INFO'}, f"Copied the rig")
         return {'FINISHED'}
 
+## TODO: clear constrains when copying, and back to pose position
 class Rigify_utils_Copy_rig2(bpy.types.Operator):
     """Copy rigify rig, attach it to copy-org-mch"""
     bl_idname = "rigify_utils.copy_rig2"
@@ -581,48 +589,10 @@ class Rigify_utils_Copy_rig2(bpy.types.Operator):
 
         bpy.context.object.data.collections_all["Torso (Tweak)"].is_solo = False
 
-        
-        # for bone in 
 
 
-        # bpy.context.object.data.collections_all["MCH"].is_visible = False
-        # bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.context.object.data.collections_all["MCH"].is_visible = False
+        bpy.ops.object.mode_set(mode='OBJECT')
         self.report({'INFO'}, f"Copied the rig")
         return {'FINISHED'}
     
-
-# class POSE_OT_parent_bones(bpy.types.Operator):
-#     """Parent bones in list A to bones in list B if head matches tail"""
-#     bl_idname = "pose.parent_bones_by_position"
-#     bl_label = "Parent Bones by Position"
-#     bl_options = {"REGISTER", "UNDO"}
-
-#     def execute(self, context):
-#         arm = context.object
-#         if arm is None or arm.type != 'ARMATURE':
-#             self.report({'ERROR'}, "Select an armature in Pose Mode")
-#             return {'CANCELLED'}
-
-#         bones_a = ["BoneA1", "BoneA2"]  # replace with your list A
-#         bones_b = ["BoneB1", "BoneB2"]  # replace with your list B
-
-#         for name_a in bones_a:
-#             if name_a not in arm.data.bones:
-#                 continue
-#             bone_a = arm.data.bones[name_a]
-
-#             head_pos = arm.matrix_world @ bone_a.head_local
-
-#             for name_b in bones_b:
-#                 if name_b not in arm.data.bones:
-#                     continue
-#                 bone_b = arm.data.bones[name_b]
-#                 tail_pos = arm.matrix_world @ bone_b.tail_local
-
-#                 if (head_pos - tail_pos).length <= 0.0001:
-#                     bone_a.parent = bone_b
-#                     bone_a.use_connect = True
-#                     self.report({'INFO'}, f"{name_a} parented to {name_b}")
-#                     break
-
-#         return {'FINISHED'}

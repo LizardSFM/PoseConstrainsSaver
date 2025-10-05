@@ -9,12 +9,15 @@ bl_info = {
 }
 
 import bpy
+from bpy.props import StringProperty
 
 from .animation import constrains, rigify
 
 # ----------------------
 # UI Panel
 # ----------------------
+
+
 
 class BONECONSTRAINTS_PT_panel(bpy.types.Panel):
     bl_label = "Bone Constraint Storage"
@@ -40,11 +43,55 @@ class BONECONSTRAINTS_PT_panel(bpy.types.Panel):
         layout.separator()
         layout.operator("rigify_utils.copy_rig", icon="COPYDOWN")
         layout.operator("rigify_utils.copy_rig2", icon="COPYDOWN")
+        layout.operator("rigify_utils.copy_rig3", icon="COPYDOWN")
+        layout.operator("rigify_utils.copy_rig4", icon="COPYDOWN")
 
-        
+        props = context.scene.my_addon_props
+
+        # bone inputs
+        # layout.prop(props, "my_text")  # This creates the text input field
+        layout.separator()
+        layout.prop(props, "usr_torso")
+        layout.prop(props, "usr_hand_l")
+        layout.prop(props, "usr_hand_r")
+        layout.prop(props, "usr_foot_l")
+        layout.prop(props, "usr_foot_r")
+
+        layout.separator()
+        layout.prop(props, "mch_torso")
+        layout.prop(props, "mch_hand_l")
+        layout.prop(props, "mch_hand_r")
+        layout.prop(props, "mch_foot_l")
+        layout.prop(props, "mch_foot_r")
+
+        layout.separator()
+        layout.prop(props, "org_spine")
+        layout.prop(props, "org_hand_l")
+        layout.prop(props, "org_hand_r")
+        layout.prop(props, "org_foot_l")
+        layout.prop(props, "org_foot_r")
+        layout.separator()
+        layout.prop(props, "org_shoulder_r")
+        layout.prop(props, "org_upper_arm_r")
+        layout.prop(props, "org_forearm_r")
+        layout.prop(props, "org_thigh_r")
+        layout.prop(props, "org_shin_r")
+        layout.prop(props, "org_toe_r")
+        layout.separator()
+        layout.prop(props, "org_shoulder_l")
+        layout.prop(props, "org_upper_arm_l")
+        layout.prop(props, "org_forearm_l")
+        layout.prop(props, "org_thigh_l")
+        layout.prop(props, "org_shin_l")
+        layout.prop(props, "org_toe_l")
+        # layout.prop_search(item, 'bone_name_target', armature_target.pose, "bones", text='')
+        # layout.prop(context.scene, 'rsl_retargeting_armature_source', icon='ARMATURE_DATA')
+
+# context.scene.my_addon_props.my_text
 
 
 classes = (
+
     constrains.BONECONSTRAINTS_OT_store,
     constrains.BONECONSTRAINTS_OT_apply,
     constrains.BONECONSTRAINTS_OT_keyframe_influence,
@@ -58,6 +105,11 @@ classes = (
 
     rigify.Rigify_utils_Copy_rig,
     rigify.Rigify_utils_Copy_rig2,
+    rigify.Rigify_utils_Copy_rig3,
+    rigify.Rigify_utils_Copy_rig4,
+    rigify.MyAddonProperties,
+
+
     BONECONSTRAINTS_PT_panel   
 )
 
@@ -69,10 +121,13 @@ def register():
     # Register all classes
     for cls in classes:
         bpy.utils.register_class(cls)
+    bpy.types.Scene.my_addon_props = bpy.props.PointerProperty(type=rigify.MyAddonProperties)
+
 
 def unregister():
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
-
+    del bpy.types.Scene.my_addon_props
+    
 if __name__ == "main":
     register()

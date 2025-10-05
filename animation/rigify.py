@@ -1,6 +1,9 @@
 # For mocap. Copy rig, leave only ORG, reparent them. 
 
 import bpy
+from bpy.props import StringProperty
+
+
 # from mathutils import Vector, geometry
 class BONECONSTRAINTS_test(bpy.types.Operator):
     """Just test for debug"""
@@ -277,6 +280,7 @@ def find_closest_bone(current_bone, other_bones):
 
     return closest_bone, closest_dist
 
+# TODO: Ignore MCH-torso.parent from copy rotation
 class Rigify_spine_retarget(bpy.types.Operator):
     """Find spine bones close to other rig's spine bones, and retarget"""
     bl_idname = "boneconstraints.rigify_spine_retarget"
@@ -337,7 +341,7 @@ class Rigify_spine_retarget(bpy.types.Operator):
 ## REWORK 
 ## TODO: Implement menu for manual input of bones (feet, hand IK, torso, neck etc)
 # if rigify rig was customized and bone names changed
-
+## TODO: neck bone 1 instead of 2
 ## TODO: clear constrains when copying, and back to pose position
 class Rigify_utils_Copy_rig(bpy.types.Operator):
     """Copy rigify rig, leave ORG and MCH bones. It should follow mocap rig"""
@@ -372,11 +376,14 @@ class Rigify_utils_Copy_rig(bpy.types.Operator):
         obj.data.collections.new("MCH-mocap")
         obj.data.collections_all["MCH-mocap"].is_solo = True
         # Name of bone, their new parent, 1 if parent should lose parent
-        mchbones = {"MCH-foot_ik.parent.L": ["ORG-foot.L", False],
-                    "MCH-foot_ik.parent.R": ["ORG-foot.R", False],
-                    "MCH-hand_ik.parent.R": ["ORG-hand.R", False],
-                    "MCH-hand_ik.parent.L": ["ORG-hand.L", False],
-                    "MCH-torso.parent": ["ORG-spine", True]}
+
+        props = context.scene.my_addon_props # Stored user inputs in UI
+        mchbones = {props.mch_foot_l: [props.org_foot_l, False],
+                    props.mch_foot_r: [props.org_foot_r, False],
+                    props.mch_hand_r: [props.org_hand_r, False],
+                    props.mch_hand_l: [props.org_hand_l, False], 
+                    props.mch_torso: [props.org_spine, True]}
+        
         for bone_name, parent_data in mchbones.items():
             parent_name = parent_data[0]
             parent_loses_parent = parent_data[1]
@@ -393,8 +400,8 @@ class Rigify_utils_Copy_rig(bpy.types.Operator):
         # Not needed
         # obj.data.edit_bones.remove(obj.data.edit_bones["ORG-breast.L"])
         # obj.data.edit_bones.remove(obj.data.edit_bones["ORG-breast.R"])
-        obj.data.edit_bones.remove(obj.data.edit_bones["ORG-pelvis.L"])
-        obj.data.edit_bones.remove(obj.data.edit_bones["ORG-pelvis.R"])
+        # obj.data.edit_bones.remove(obj.data.edit_bones["ORG-pelvis.L"])
+        # obj.data.edit_bones.remove(obj.data.edit_bones["ORG-pelvis.R"])
 
         bpy.ops.armature.select_all(action='SELECT')
         bpy.ops.armature.separate()
@@ -462,17 +469,17 @@ class Rigify_utils_Copy_rig(bpy.types.Operator):
             # bpy.context.active_bone.parent = bpy.data.armatures["rig.012"].edit_bones["ORG-pelvis.L"]
         
         # Specific finger parenting
-        edit_bones["ORG-thumb.01.R"].parent = edit_bones["ORG-hand.R"]
-        edit_bones["ORG-palm.01.R"].parent = edit_bones["ORG-hand.R"]
-        edit_bones["ORG-palm.02.R"].parent = edit_bones["ORG-hand.R"]
-        edit_bones["ORG-palm.03.R"].parent = edit_bones["ORG-hand.R"]
-        edit_bones["ORG-palm.04.R"].parent = edit_bones["ORG-hand.R"]
+        # edit_bones["ORG-thumb.01.R"].parent = edit_bones["ORG-hand.R"]
+        # edit_bones["ORG-palm.01.R"].parent = edit_bones["ORG-hand.R"]
+        # edit_bones["ORG-palm.02.R"].parent = edit_bones["ORG-hand.R"]
+        # edit_bones["ORG-palm.03.R"].parent = edit_bones["ORG-hand.R"]
+        # edit_bones["ORG-palm.04.R"].parent = edit_bones["ORG-hand.R"]
 
-        edit_bones["ORG-thumb.01.L"].parent = edit_bones["ORG-hand.L"]
-        edit_bones["ORG-palm.01.L"].parent = edit_bones["ORG-hand.L"]
-        edit_bones["ORG-palm.02.L"].parent = edit_bones["ORG-hand.L"]
-        edit_bones["ORG-palm.03.L"].parent = edit_bones["ORG-hand.L"]
-        edit_bones["ORG-palm.04.L"].parent = edit_bones["ORG-hand.L"]
+        # edit_bones["ORG-thumb.01.L"].parent = edit_bones["ORG-hand.L"]
+        # edit_bones["ORG-palm.01.L"].parent = edit_bones["ORG-hand.L"]
+        # edit_bones["ORG-palm.02.L"].parent = edit_bones["ORG-hand.L"]
+        # edit_bones["ORG-palm.03.L"].parent = edit_bones["ORG-hand.L"]
+        # edit_bones["ORG-palm.04.L"].parent = edit_bones["ORG-hand.L"]
         bpy.ops.object.editmode_toggle(False)
 
         obj.data.pose_position = 'POSE'
@@ -482,6 +489,7 @@ class Rigify_utils_Copy_rig(bpy.types.Operator):
         return {'FINISHED'}
 
 ## TODO: clear constrains when copying, and back to pose position
+# TODO: Attempt to create Transform con for hands
 class Rigify_utils_Copy_rig2(bpy.types.Operator):
     """Copy rigify rig, attach it to copy-org-mch"""
     bl_idname = "rigify_utils.copy_rig2"
@@ -516,12 +524,14 @@ class Rigify_utils_Copy_rig2(bpy.types.Operator):
         bpy.context.object.data.collections_all["MCH"].is_visible = True
         bpy.ops.pose.select_all(action='SELECT')
         # name, copy from, 1 copy location, 1 copy rotation
-        bone_binds = {"MCH-torso.parent": ["MCH-torso.parent", 1,1],
-                      "MCH-hand_ik.parent.R": ["MCH-hand_ik.parent.R", 1,1],
-                      "MCH-hand_ik.parent.L": ["MCH-hand_ik.parent.L", 1,1],
-                      "foot_ik.R": ["MCH-foot_ik.parent.R", 1,1],
-                      "foot_ik.L": ["MCH-foot_ik.parent.L", 1,1],}
+        props = context.scene.my_addon_props # Stored user inputs in UI
+        bone_binds = {props.mch_torso: [props.mch_torso, 1,1],
+                      props.mch_hand_l: [props.mch_hand_l, 1,1],
+                      props.mch_hand_r: [props.mch_hand_r, 1,1],
+                      props.usr_foot_l: [props.mch_foot_l, 1,1],
+                      props.usr_foot_r: [props.mch_foot_r, 1,1],}
         
+
         for bone in context.selected_pose_bones:
             if bone.name not in bone_binds:
                 continue
@@ -596,3 +606,364 @@ class Rigify_utils_Copy_rig2(bpy.types.Operator):
         self.report({'INFO'}, f"Copied the rig")
         return {'FINISHED'}
     
+
+class Rigify_utils_Copy_rig3(bpy.types.Operator):
+    """Attach original rig to its copy"""
+    bl_idname = "rigify_utils.copy_rig3"
+    bl_label = "Copy rigify rig3"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        if len(context.selected_objects) < 2:
+            self.report({'ERROR'}, "Select two armatures, one is original rig, other is its untouched copy")
+            return {'CANCELLED'}
+        
+        
+        orig = context.selected_objects[0]
+        copy_org = context.selected_objects[1]
+        print(f"cond: {orig.name.endswith('-copy')}")
+        if orig.name.endswith("-copy"):
+            orig = context.selected_objects[1]
+            copy_org = context.selected_objects[0]
+
+        # grab pose bones
+        bpy.ops.object.select_all(action='DESELECT')
+        orig.select_set(True)
+        bpy.context.view_layer.objects.active = orig
+
+        # Iterating over bones
+        bpy.ops.object.posemode_toggle(True)
+        bpy.ops.pose.select_all(action='SELECT')
+        props = context.scene.my_addon_props
+        ikbones = [props.usr_torso, props.usr_hand_l, props.usr_hand_r, props.usr_foot_l, props.usr_foot_r]
+        for pose_bone in context.selected_pose_bones:
+            con = pose_bone.constraints.new('COPY_ROTATION')
+            con.name = con.name + "-mocap2"
+            con.target = copy_org
+            con.subtarget = pose_bone.name
+            # con.target_space = 'LOCAL_OWNER_ORIENT'
+            # con.target_space = 'LOCAL_WITH_PARENT'
+            # con.owner_space = 'LOCAL_WITH_PARENT'
+            con.target_space = 'LOCAL'
+            con.owner_space = 'LOCAL'
+            con.influence = 1.0
+            con.mix_mode = 'AFTER'
+
+            for ikbone in ikbones:
+                if ikbone == pose_bone.name:
+                    # cuz these bones require target's local rotation to be modified directly via constrain
+                    con.target_space = 'LOCAL_WITH_PARENT'
+                    con.owner_space = 'LOCAL_WITH_PARENT'
+
+                    con = pose_bone.constraints.new('COPY_LOCATION')
+                    con.name = con.name + "-mocap2"
+                    con.target = copy_org
+                    con.subtarget = pose_bone.name
+
+                    # setattr(con, "target_space", 'LOCAL_OWNER_ORIENT')
+                    con.target_space = 'LOCAL_WITH_PARENT'
+                    con.owner_space = 'LOCAL_WITH_PARENT'
+                    # con.target_space = 'LOCAL_OWNER_ORIENT'
+                    # con.owner_space = 'LOCAL'
+                    con.influence = 1.0
+                    con.use_offset = True # allows moving around
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+        self.report({'INFO'}, f"Copied the rig")
+        return {'FINISHED'}
+
+# TODO: Create retarget from Mocap to Copy-org-mch
+class Rigify_utils_Copy_rig4(bpy.types.Operator):
+    """Creates bindings from Mocap to Copy. Select Copy-mch-org, then mocap"""
+    bl_idname = "rigify_utils.copy_rig4"
+    bl_label = "Copy rigify rig4"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        if len(context.selected_objects) < 2:
+            self.report({'ERROR'}, "Select two armatures, one is Rigify copy, other is mocap")
+            return {'CANCELLED'}
+        bpy.ops.object.mode_set(mode='OBJECT')
+        
+        copy = context.selected_objects[0]
+        mocap = context.selected_objects[1]
+        id = copy.data.collections_all.find("ORG")
+        if copy.data.collections_all.find("ORG") == -1:
+            copy = context.selected_objects[1]
+            mocap = context.selected_objects[0]
+
+        # Setting constrains
+        bpy.ops.object.posemode_toggle(True)
+        bpy.ops.pose.select_all(action='DESELECT')
+        # Select all bones in the first rig
+        for bone in copy.data.bones:
+            bone.select = True
+        props = context.scene.my_addon_props # Stored user inputs in UI
+        bone_binds = {
+            # props.org_shoulder_r : "RightShoulder",
+            props.org_upper_arm_r : "RightArm",
+            props.org_forearm_r : "RightForeArm",
+            props.org_hand_r : "RightHand",
+            props.org_thigh_r : "RightUpLeg",
+            props.org_shin_r : "RightLeg",
+            props.org_foot_r : "RightFoot",
+            props.org_toe_r : "RightToeBase",
+
+            # "ORG-shoulder.L" : "LeftShoulder",
+            props.org_upper_arm_l : "LeftArm",
+            props.org_forearm_l : "LeftForeArm",
+            props.org_hand_l : "LeftHand",
+            props.org_thigh_l : "LeftUpLeg",
+            props.org_shin_l : "LeftLeg",
+            props.org_foot_l : "LeftFoot",
+            props.org_toe_r : "LeftToeBase",
+
+            "" : "",
+            "" : "",
+            "" : "",
+            "" : "",
+            "" : "",
+            "" : "",
+            "" : "",
+            "" : "",
+        }
+        count = 0
+        for bone in context.selected_pose_bones:
+            if bone.name not in bone_binds:
+                continue
+            con = bone.constraints.new('COPY_ROTATION')
+            con.target = mocap
+            con.subtarget = bone_binds[bone.name]
+
+            ## Local doesn't really work if rigify bones aren't straight
+            # setattr(con, "target_space", 'LOCAL_OWNER_ORIENT')
+            # con.target_space = 'LOCAL_OWNER_ORIENT'
+            # con.owner_space = 'LOCAL'
+            # con.influence = 1.0
+            # con.mix_mode = 'AFTER'
+            count += 1
+
+        # Hips location bind
+        for bone in context.selected_pose_bones:
+            if bone.name != "ORG-spine":
+                continue
+            con = bone.constraints.new('COPY_LOCATION')
+            con.target = mocap
+            con.subtarget = "Hips"
+
+            # setattr(con, "target_space", 'LOCAL_OWNER_ORIENT')
+            con.target_space = 'LOCAL_OWNER_ORIENT'
+            con.owner_space = 'LOCAL'
+            con.influence = 1.0
+            con.use_offset = True # allows moving around
+
+
+        
+        # SPINE BONES   
+        bpy.ops.object.editmode_toggle(True)
+        bpy.ops.armature.select_all(action='SELECT')
+
+        # Get center bones for copy rigify rig
+        bones_copy = find_centered_bones(copy.data.edit_bones)
+        bones_mocap = find_centered_bones(mocap.data.edit_bones)
+        bones_pairs = {}
+        for bone_copy in bones_copy:
+            if bone_copy.name == props.mch_torso: # Ignore
+                continue
+            closest_bone, closest_dist = find_closest_bone(bone_copy, bones_mocap)
+            bones_pairs[bone_copy.name] = [closest_bone.name, closest_dist]
+            self.report({'INFO'}, f"{bone_copy.name} - Closest: {closest_bone.name}, dist: {closest_dist:.4f}")
+        
+
+        bpy.ops.object.posemode_toggle(True)
+        bpy.ops.pose.select_all(action='DESELECT')
+        # Select all bones in the first rig
+        for bone in copy.data.bones:
+            if bone.name in bones_pairs:
+                bone.select = True
+        
+        for bone in context.selected_pose_bones:
+        # for bone, pair in bones_pairs.items():
+            con = bone.constraints.new('COPY_ROTATION')
+            con.target = mocap
+            con.subtarget = bones_pairs[bone.name][0]
+
+            # copypaste
+            ## Local doesn't really work if rigify bones aren't straight
+            # setattr(con, "target_space", 'LOCAL_OWNER_ORIENT')
+            # con.target_space = 'LOCAL_OWNER_ORIENT'
+            # con.owner_space = 'LOCAL'
+            # con.influence = 1.0
+            # con.mix_mode = 'AFTER'
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+        self.report({'INFO'}, f"{count} bindings added")
+        return {'FINISHED'}
+
+
+
+# Bones
+class MyAddonProperties(bpy.types.PropertyGroup):
+    my_text: bpy.props.StringProperty(
+        name="Text Input",
+        description="Enter some text here",
+        default="torso"
+    )
+
+    # user controlled bones
+    usr_torso: bpy.props.StringProperty(
+        name="torso",
+        description="User controlled bone",
+        default="torso"
+    )
+    usr_hand_l: bpy.props.StringProperty(
+        name="hand_ik.L",
+        description="User controlled bone",
+        default="hand_ik.L"
+    )
+    usr_hand_r: bpy.props.StringProperty(
+        name="hand_ik.R",
+        description="User controlled bone",
+        default="hand_ik.R"
+    )
+    usr_foot_l: bpy.props.StringProperty(
+        name="Foot IK L",
+        description="User controlled bone",
+        default="foot_ik.L"
+    )
+    usr_foot_r: bpy.props.StringProperty(
+        name="Foot IK R",
+        description="User controlled bone",
+        default="foot_ik.R"
+    )
+
+
+
+
+
+
+    mch_torso: bpy.props.StringProperty(
+        name="MCH Torso",
+        description="Torso mch bone name",
+        default="MCH-torso.parent"
+    )
+    mch_hand_l: bpy.props.StringProperty(
+        name="MCH Hand L",
+        description="MCH bone name",
+        default="MCH-hand_ik.parent.L"
+    )
+
+    mch_hand_r: bpy.props.StringProperty(
+        name="MCH Hand R",
+        description="MCH bone name",
+        default="MCH-hand_ik.parent.R"
+    )
+
+    mch_foot_l: bpy.props.StringProperty(
+        name="MCH Foot L",
+        description="MCH bone name",
+        default="MCH-foot_ik.parent.L"
+    )
+
+    mch_foot_r: bpy.props.StringProperty(
+        name="MCH Foot R",
+        description="MCH bone name",
+        default="MCH-foot_ik.parent.R"
+    )
+
+
+
+
+    org_spine: bpy.props.StringProperty(
+        name="ORG-spine",
+        description="ORG Bones",
+        default="ORG-spine"
+    )
+    org_hand_l: bpy.props.StringProperty(
+        name="ORG-hand.L",
+        description="ORG Bones",
+        default="ORG-hand.L"
+    )
+    org_hand_r: bpy.props.StringProperty(
+        name="ORG-hand.R",
+        description="ORG Bones",
+        default="ORG-hand.R"
+    )
+    org_foot_l: bpy.props.StringProperty(
+        name="ORG-foot.L",
+        description="ORG Bones",
+        default="ORG-foot.L"
+    )
+    org_foot_r: bpy.props.StringProperty(
+        name="ORG-foot.R",
+        description="ORG Bones",
+        default="ORG-foot.R"
+    )
+
+
+
+
+    org_shoulder_r: bpy.props.StringProperty(
+        name="ORG-shoulder.R",
+        description="ORG Bones",
+        default="ORG-shoulder.R"
+    )
+    org_upper_arm_r: bpy.props.StringProperty(
+        name="ORG-upper_arm.R",
+        description="ORG Bones",
+        default="ORG-upper_arm.R"
+    )
+    org_forearm_r: bpy.props.StringProperty(
+        name="ORG-forearm.R",
+        description="ORG Bones",
+        default="ORG-forearm.R"
+    )
+    org_thigh_r: bpy.props.StringProperty(
+        name="ORG-thigh.R",
+        description="ORG Bones",
+        default="ORG-thigh.R"
+    )
+    org_shin_r: bpy.props.StringProperty(
+        name="ORG-shin.R",
+        description="ORG Bones",
+        default="ORG-shin.R"
+    )
+    org_toe_r: bpy.props.StringProperty(
+        name="ORG-toe.R",
+        description="ORG Bones",
+        default="ORG-toe.R"
+    )
+
+
+    org_shoulder_l: bpy.props.StringProperty(
+        name="ORG-shoulder.L",
+        description="ORG Bones",
+        default="ORG-shoulder.L"
+    )
+    org_upper_arm_l: bpy.props.StringProperty(
+        name="ORG-upper_arm.L",
+        description="ORG Bones",
+        default="ORG-upper_arm.L"
+    )
+    org_forearm_l: bpy.props.StringProperty(
+        name="ORG-forearm.L",
+        description="ORG Bones",
+        default="ORG-forearm.L"
+    )
+    org_thigh_l: bpy.props.StringProperty(
+        name="ORG-thigh.L",
+        description="ORG Bones",
+        default="ORG-thigh.L"
+    )
+    org_shin_l: bpy.props.StringProperty(
+        name="ORG-shin.L",
+        description="ORG Bones",
+        default="ORG-shin.L"
+    )
+    org_toe_l: bpy.props.StringProperty(
+        name="ORG-toe.L",
+        description="ORG Bones",
+        default="ORG-toe.L"
+    )
